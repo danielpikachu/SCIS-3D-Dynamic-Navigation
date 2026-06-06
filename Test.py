@@ -984,7 +984,7 @@ def main():
         st.markdown("""
         <div class="welcome-container">
             <h1 class="welcome-title">NAVIGATE YOUR CAMPUS</h1>
-            <div class="welcome-subtitle">Find Classrooms, labs, resources in stunning 3D</div>
+            <div class="welcome-subtitle">Find Classrooms, Labs, Resources In Stunning 3D</div>
         </div>
         """, unsafe_allow_html=True)
 
