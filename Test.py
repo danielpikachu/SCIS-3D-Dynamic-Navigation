@@ -1041,7 +1041,7 @@ def main():
             return
         
         graph = build_navigation_graph(school_data)
-        st.success("✅ Campus data loaded successfully!")
+        st.success("✅ Campus data Loaded Successfully!")
 
         if nav_button:
             try:
