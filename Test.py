@@ -847,7 +847,7 @@ def navigate(graph, start_building, start_classroom, start_level, end_building, 
                 'start_building': start_building,
                 'end_building': end_building
             }
-            return path, f"Total Distance: {total_distance:.2f} units", full_path_str, display_options
+            return path, f"Total Distance: {total_distance:.2f} Units", full_path_str, display_options
         else:
             return None, "No available path between the two classrooms", None, None
     except Exception as e:
