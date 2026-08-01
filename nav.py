@@ -339,7 +339,7 @@ def plot_3d_map_plotly(school_data, graph=None, display_options=None):
                     fig.add_trace(go.Scatter3d(
                         x=[x], y=[y], z=[z],
                         mode='markers+text',
-                        marker=dict(color=elev_color, size=marker_size, symbol='cube', line=dict(color='black', width=1.5)),
+                        marker=dict(color=elev_color, size=marker_size, symbol='square-open', line=dict(color='black', width=1.5)),
                         text=elev_name, textposition="top center", textfont=dict(size=9, color=COLORS['elevator_label']),
                         name=legend_key,
                         legendgroup="Elevators",
