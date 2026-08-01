@@ -211,6 +211,9 @@
             "points": [[22, -70, -9],[22, -65, -9],[22, -60, -9],[22, -55, -9],[22, -50, -9]]
           }
         ],
+        "elevators": [
+           {"name": "ElevatorB1", "coordinates": [31, -60, -9]}
+        ],
         "stairs": [
           {"name": "StairsB1", "coordinates": [35, -60, -9]},
           {"name": "StairsB2", "coordinates": [5, -60, -9]}
@@ -238,6 +241,9 @@
             "points": [[22, -30, -3],[22, -50, -3]]
           }
         ],
+        "elevators": [
+          {"name": "ElevatorB1", "coordinates": [31, -60, -3]}
+        ],
         "stairs": [
           {"name": "StairsB1", "coordinates": [35, -60, -3]},
           {"name": "StairsB2", "coordinates": [5, -60, -3]}
@@ -259,6 +265,9 @@
             "points": [[22, -70, 2],[22, -65, 2],[22, -60, 2],[22, -55, 2],[22, -50, 2]]
           }
         ],
+        "elevators": [
+          {"name": "ElevatorB1", "coordinates": [31, -60, 2]}
+        ],
         "stairs": [
           {"name": "StairsB1", "coordinates": [35, -60, 2]},
           {"name": "StairsB2", "coordinates": [5, -60, 2]}
@@ -270,7 +279,9 @@
       {"from": ["StairsB1", "level1"], "to": ["StairsB1", "level3"]},
       {"from": ["StairsB2", "lowerLevel"], "to": ["StairsB2", "level1"]},
       {"from": ["StairsB2", "level1"], "to": ["StairsB2", "level3"]},
-      {"from": ["connectToBuildingAAndC", "level1"], "to": ["connectToBuildingB", "level1"]}
+      {"from": ["connectToBuildingAAndC", "level1"], "to": ["connectToBuildingB", "level1"]},
+      {"from": ["ElevatorB1", "lowerLevel"], "to": ["ElevatorB1", "level1"]},
+      {"from": ["ElevatorB1", "level1"], "to": ["ElevatorB1", "level3"]}
     ]
   },
   "buildingC": {
