@@ -321,7 +321,7 @@ def plot_3d_map_plotly(school_data, graph=None, display_options=None):
                         showlegend=show_legend
                     ))
 
-            # ========== 新增绘制电梯 ==========
+            # ========== 绘制电梯 ==========
             if 'elevators' in level:
                 for elevator in level['elevators']:
                     elev_name = elevator['name']
@@ -528,7 +528,7 @@ def build_navigation_graph(school_data):
                     coordinates=classroom['coordinates']
                 )
 
-            # 2. 添加电梯节点（新增）
+            # 2. 添加电梯节点
             if 'elevators' in level:
                 for elevator in level['elevators']:
                     graph.add_node(
@@ -657,7 +657,7 @@ def build_navigation_graph(school_data):
                 if nearest_corr_node_id:
                     graph.add_edge(stair_node_id, nearest_corr_node_id, min_dist)
 
-            # ========== 电梯绑定最近走廊（新增） ==========
+            # ========== 电梯绑定最近走廊 ==========
             elevator_nodes = [
                 node_id for node_id, node_info in graph.nodes.items()
                 if node_info['building'] == building_name
@@ -699,7 +699,7 @@ def build_navigation_graph(school_data):
                 dist = euclidean_distance(coords1, coords2, floor_penalty=15.0)
                 graph.add_edge(node1_id, node2_id, dist)
 
-        # ========== 电梯跨楼层竖向连通（新增） ==========
+        # ========== 电梯跨楼层竖向连通 ==========
         elevator_names = set()
         for node_id, node_info in graph.nodes.items():
             if node_info['type'] == 'elevator':
@@ -859,7 +859,7 @@ def construct_path(previous_nodes, end_node):
         current_node = previous_nodes[current_node]
     return path if len(path) > 1 else None
 
-# ====================== 导航核心函数：无障碍只禁用B楼楼梯 ======================
+# ====================== 导航核心函数：模式切换 ======================
 def navigate(graph, start_building, start_classroom, start_level, end_building, end_classroom, end_level):
     valid_buildings = ['A', 'B', 'C', 'Gate']
     if start_building not in valid_buildings or end_building not in valid_buildings:
@@ -882,12 +882,18 @@ def navigate(graph, start_building, start_classroom, start_level, end_building, 
         if end_node not in graph.nodes:
             return None, f"Destination classroom does not exist: {end_building}{end_classroom}@{end_level}", None, None
 
-        # =====无障碍模式：只禁用B楼的楼梯，保留A和C楼的楼梯 =====
+        # ===== 根据用户选择切换模式 =====
         temp_graph = copy.deepcopy(graph)
+        
         if st.session_state.get("is_disabled", False):
+            # YES模式：只禁用B楼的楼梯，保留电梯
             for nid, node_data in temp_graph.nodes.items():
-                # 只禁用B楼的楼梯
                 if node_data['type'] == 'stair' and node_data['building'] == 'B':
+                    node_data['neighbors'] = {}
+        else:
+            # NO模式：禁用所有电梯，只使用楼梯
+            for nid, node_data in temp_graph.nodes.items():
+                if node_data['type'] == 'elevator':
                     node_data['neighbors'] = {}
 
         distances, previous_nodes = dijkstra(temp_graph, start_node)
@@ -1121,7 +1127,7 @@ def main():
                 "Are you a user requiring barrier-free access?",
                 options=["No", "Yes"],
                 index=0,
-                help="Select Yes: Only Building B stairs will be disabled, ElevatorB1 will be used for vertical travel in Building B"
+                help="Select No: All stairs are available, elevator is disabled. Select Yes: Only Building B stairs are disabled, ElevatorB1 is available"
             )
             # 更新session state
             st.session_state['is_disabled'] = (access_choice == "Yes")
