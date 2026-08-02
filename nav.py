@@ -859,7 +859,7 @@ def construct_path(previous_nodes, end_node):
         current_node = previous_nodes[current_node]
     return path if len(path) > 1 else None
 
-# ====================== 导航核心函数：无障碍禁用楼梯 ======================
+# ====================== 导航核心函数：无障碍只禁用B楼楼梯 ======================
 def navigate(graph, start_building, start_classroom, start_level, end_building, end_classroom, end_level):
     valid_buildings = ['A', 'B', 'C', 'Gate']
     if start_building not in valid_buildings or end_building not in valid_buildings:
@@ -882,13 +882,13 @@ def navigate(graph, start_building, start_classroom, start_level, end_building, 
         if end_node not in graph.nodes:
             return None, f"Destination classroom does not exist: {end_building}{end_classroom}@{end_level}", None, None
 
-        # =====无障碍模式：所有楼梯邻边权重设无穷大，无法通行=====
+        # =====无障碍模式：只禁用B楼的楼梯，保留A和C楼的楼梯 =====
         temp_graph = copy.deepcopy(graph)
         if st.session_state.get("is_disabled", False):
             for nid, node_data in temp_graph.nodes.items():
-                if node_data['type'] == 'stair':
-                    for neighbor in node_data['neighbors']:
-                        temp_graph.nodes[nid]['neighbors'][neighbor] = float('inf')
+                # 只禁用B楼的楼梯
+                if node_data['type'] == 'stair' and node_data['building'] == 'B':
+                    node_data['neighbors'] = {}
 
         distances, previous_nodes = dijkstra(temp_graph, start_node)
         path = construct_path(previous_nodes, end_node)
@@ -1121,8 +1121,9 @@ def main():
                 "Are you a user requiring barrier-free access?",
                 options=["No", "Yes"],
                 index=0,
-                help="Select Yes: Stairs will be unavailable, only Building B elevator can be used for vertical floor travel"
+                help="Select Yes: Only Building B stairs will be disabled, ElevatorB1 will be used for vertical travel in Building B"
             )
+            # 更新session state
             st.session_state['is_disabled'] = (access_choice == "Yes")
             st.divider()
 
@@ -1185,6 +1186,8 @@ def main():
                     st.markdown(f"<div style='background-color:#f0f2f6; padding:10px; border-radius:5px; word-wrap:break-word; white-space:normal;'>{simplified_path}</div>", unsafe_allow_html=True)
                     st.session_state['display_options'] = new_display_options
                     display_options = new_display_options
+                elif path is None and message:
+                    st.error(f"❌ {message}")
             except Exception as e:
                 st.error(f"Navigation failed: {str(e)}")
 
