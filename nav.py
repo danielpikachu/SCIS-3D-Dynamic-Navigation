@@ -12,6 +12,10 @@ from plotly.subplots import make_subplots
 import base64
 import copy
 
+# 导入多语言支持
+from lang_utils import init_language, get_lang, get_text, language_selector, get_direction_text, get_node_type_text
+from languages import LANGUAGES
+
 # ====================== 移动端适配核心：页面配置 ======================
 st.set_page_config(
     page_title="SCIS Navigation System",
@@ -483,9 +487,9 @@ def get_direction_between_nodes(graph, current_node_id, next_node_id):
     # 电梯上下楼层提示
     if (curr_is_elev and next_is_elev) or (curr_is_stair and next_is_stair):
         if next_z > curr_z:
-            return "<span style='color:DarkGoldenRod; font-weight:bold;'>up</span>"
+            return get_direction_text('up')
         elif next_z < curr_z:
-            return "<span style='color:DarkGoldenRod; font-weight:bold;'>down</span>"
+            return get_direction_text('down')
         else:
             return ""
     
@@ -495,13 +499,13 @@ def get_direction_between_nodes(graph, current_node_id, next_node_id):
     
     if abs(x_diff) > threshold or abs(y_diff) > threshold:
         if y_diff > threshold:
-            return "<span style='color:DarkGoldenRod; font-weight:bold;'>forward</span>"
+            return get_direction_text('forward')
         elif y_diff < -threshold:
-            return "<span style='color:DarkGoldenRod; font-weight:bold;'>backward</span>"
+            return get_direction_text('backward')
         elif x_diff > threshold:
-            return "<span style='color:DarkGoldenRod; font-weight:bold;'>right</span>"
+            return get_direction_text('right')
         elif x_diff < -threshold:
-            return "<span style='color:DarkGoldenRod; font-weight:bold;'>left</span>"
+            return get_direction_text('left')
     
     return ""
 
@@ -863,7 +867,7 @@ def construct_path(previous_nodes, end_node):
 def navigate(graph, start_building, start_classroom, start_level, end_building, end_classroom, end_level):
     valid_buildings = ['A', 'B', 'C', 'Gate']
     if start_building not in valid_buildings or end_building not in valid_buildings:
-        return None, "Invalid building selection, only Buildings A, B, C and Gate are supported", None, None
+        return None, get_text('building_not_found'), None, None
         
     try:
         start_key = (start_building, start_classroom, start_level)
@@ -937,7 +941,7 @@ def navigate(graph, start_building, start_classroom, start_level, end_building, 
                             connected_building = 'Other'
                             
                         if prev_building and prev_building != node_building:
-                            node_desc = f"Cross corridor from Building {prev_building} to Building {node_building} ({node_level})"
+                            node_desc = get_text('cross_corridor').format(prev_building, node_building, node_level)
                 
                 if node_desc:
                     if i < len(path) - 1:
@@ -945,7 +949,7 @@ def navigate(graph, start_building, start_classroom, start_level, end_building, 
                         direction = get_direction_between_nodes(graph, node_id, next_node_id)
                         
                         if not direction:
-                            direction = "<span style='color:DarkGoldenRod; font-weight:bold;'>forward</span>"
+                            direction = get_direction_text('forward')
                         
                         if direction:
                             node_desc += f" {direction}"
@@ -965,11 +969,11 @@ def navigate(graph, start_building, start_classroom, start_level, end_building, 
                 'start_building': start_building,
                 'end_building': end_building
             }
-            return path, f"Total Distance: {total_distance:.2f} Units", full_path_str, display_options
+            return path, get_text('total_distance').format(total_distance), full_path_str, display_options
         else:
-            return None, "No available path between the two classrooms", None, None
+            return None, get_text('no_path'), None, None
     except Exception as e:
-        return None, f"Navigation error: {str(e)}", None, None
+        return None, get_text('navigation_error').format(str(e)), None, None
 
 def get_classroom_info(school_data):
     try:
@@ -1029,6 +1033,9 @@ def reset_app_state():
 # Page Logic
 # --------------------------
 def main():
+    # 初始化语言
+    init_language()
+    
     # 会话状态初始化
     if 'page' not in st.session_state:
         st.session_state['page'] = 'welcome'
@@ -1104,16 +1111,16 @@ def main():
         if 'worksheet' not in st.session_state:
             st.session_state['worksheet'] = init_google_sheet()
 
-        st.markdown("""
+        st.markdown(f"""
         <div class="welcome-container">
-            <h1 class="welcome-title">NAVIGATE YOUR CAMPUS</h1>
-            <div class="welcome-subtitle">Find Classrooms, Labs, Resources In Stunning 3D</div>
+            <h1 class="welcome-title">{get_text('welcome_title')}</h1>
+            <div class="welcome-subtitle">{get_text('welcome_subtitle')}</div>
         </div>
         """, unsafe_allow_html=True)
 
         col_empty1, col_center, col_empty2 = st.columns([1, 0.5, 1])
         with col_center:
-            if st.button('EXPLORE 3D MAP'):
+            if st.button(get_text('explore_3d')):
                 update_access_count(st.session_state['worksheet'])
                 st.session_state['page'] = 'main'
                 st.rerun()
@@ -1121,43 +1128,47 @@ def main():
     # 主导航界面
     else:
         with st.sidebar:
-            # 无障碍设置区域（最顶部）
-            st.subheader("♿ Accessibility Setting")
+            # 语言选择器
+            language_selector()
+            st.divider()
+            
+            # 无障碍设置区域
+            st.subheader(get_text('accessibility_setting'))
             access_choice = st.radio(
-                "Are you a user requiring barrier-free access?",
+                get_text('barrier_free_access'),
                 options=["No", "Yes"],
                 index=0,
-                help="Select No: All stairs are available, elevator is disabled. Select Yes: Only Building B stairs are disabled, ElevatorB1 is available"
+                help=get_text('select_no')
             )
             # 更新session state
             st.session_state['is_disabled'] = (access_choice == "Yes")
             st.divider()
 
-            st.header("📍 Select Locations")
+            st.header(get_text('select_locations'))
             school_data = load_school_data_detailed('school_data_detailed.json')
             if school_data is None:
-                st.error("Failed to load school data!")
+                st.error(get_text('loading_error'))
                 return
             building_names, levels_by_building, classrooms_by_building = get_classroom_info(school_data)
             
-            st.subheader("Start Point")
-            start_building = st.selectbox("Building", building_names, key="start_building")
+            st.subheader(get_text('start_point'))
+            start_building = st.selectbox(get_text('building'), building_names, key="start_building")
             start_levels = levels_by_building.get(start_building, [])
-            start_level = st.selectbox("Floor", start_levels, key="start_level")
+            start_level = st.selectbox(get_text('floor'), start_levels, key="start_level")
             start_classrooms = classrooms_by_building.get(start_building, {}).get(start_level, [])
-            start_classroom = st.selectbox("Classroom", start_classrooms, key="start_classroom")
+            start_classroom = st.selectbox(get_text('classroom'), start_classrooms, key="start_classroom")
 
-            st.subheader("End Point")
-            end_building = st.selectbox("Building", building_names, key="end_building")
+            st.subheader(get_text('end_point'))
+            end_building = st.selectbox(get_text('building'), building_names, key="end_building")
             end_levels = levels_by_building.get(end_building, [])
-            end_level = st.selectbox("Floor", end_levels, key="end_level")
+            end_level = st.selectbox(get_text('floor'), end_levels, key="end_level")
             end_classrooms = classrooms_by_building.get(end_building, {}).get(end_level, [])
-            end_classroom = st.selectbox("Classroom", end_classrooms, key="end_classroom")
+            end_classroom = st.selectbox(get_text('classroom'), end_classrooms, key="end_classroom")
 
             st.divider()
-            nav_button = st.button("🔍 Find Shortest Path", use_container_width=True)
-            reset_button = st.button("🔄 Reset View", use_container_width=True)
-            exit_button = st.button("🚪 Back to Welcome", use_container_width=True)
+            nav_button = st.button(get_text('find_path'), use_container_width=True)
+            reset_button = st.button(get_text('reset_view'), use_container_width=True)
+            exit_button = st.button(get_text('back_to_welcome'), use_container_width=True)
 
             if reset_button:
                 reset_app_state()
@@ -1167,16 +1178,16 @@ def main():
                 st.session_state['page'] = 'welcome'
                 st.rerun()
 
-        st.markdown("<h2 style='margin:0; padding:0; text-align:left; line-height:1.2; font-size:clamp(18px,5vw,26px);'>🏫 SCIS Campus Navigation System</h2>", unsafe_allow_html=True)
+        st.markdown(f"<h2 style='margin:0; padding:0; text-align:left; line-height:1.2; font-size:clamp(18px,5vw,26px);'>{get_text('campus_navigation')}</h2>", unsafe_allow_html=True)
         st.markdown("<div style='height:5px;'></div>", unsafe_allow_html=True)
         
         school_data = load_school_data_detailed('school_data_detailed.json')
         if school_data is None:
-            st.error("Failed to load data file!")
+            st.error(get_text('loading_error'))
             return
         
         graph = build_navigation_graph(school_data)
-        st.success("✅ Campus Data Loaded Successfully!")
+        st.success(get_text('data_loaded'))
 
         display_options = st.session_state['display_options']
 
@@ -1187,15 +1198,15 @@ def main():
                     end_building, end_classroom, end_level
                 )
                 if path and new_display_options:
-                    st.success(f"📊 Navigation Result: {message}")
-                    st.markdown("#### 🛤️ Path Details")
+                    st.success(f"{get_text('navigation_result')} {message}")
+                    st.markdown(f"#### {get_text('path_details')}")
                     st.markdown(f"<div style='background-color:#f0f2f6; padding:10px; border-radius:5px; word-wrap:break-word; white-space:normal;'>{simplified_path}</div>", unsafe_allow_html=True)
                     st.session_state['display_options'] = new_display_options
                     display_options = new_display_options
                 elif path is None and message:
                     st.error(f"❌ {message}")
             except Exception as e:
-                st.error(f"Navigation failed: {str(e)}")
+                st.error(get_text('navigation_error').format(str(e)))
 
         # 渲染3D地图
         fig, _ = plot_3d_map(school_data, graph, display_options)
