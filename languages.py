@@ -1,5 +1,5 @@
 # languages.py
-# 支持多语言：英文、中文
+# 支持多语言：英文、中文、法语
 
 LANGUAGES = {
     'en': {
@@ -93,16 +93,63 @@ LANGUAGES = {
         'elevator': '电梯',
         'classroom': '教室',
         'corridor': '走廊',
+    },
+    'fr': {
+        # 导航栏
+        'accessibility_setting': '♿ Paramètres d\'accessibilité',
+        'barrier_free_access': 'Avez-vous besoin d\'un accès sans obstacle ?',
+        'select_no': 'Sélectionnez "Non" : Tous les escaliers sont disponibles, l\'ascenseur est désactivé. Sélectionnez "Oui" : Seuls les escaliers du bâtiment B sont désactivés, l\'ascenseur est disponible',
+        'select_locations': '📍 Sélectionnez les emplacements',
+        'start_point': 'Point de départ',
+        'end_point': 'Point d\'arrivée',
+        'building': 'Bâtiment',
+        'floor': 'Étage',
+        'classroom': 'Salle de classe',
+        'find_path': '🔍 Trouver le chemin le plus court',
+        'reset_view': '🔄 Réinitialiser la vue',
+        'back_to_welcome': '🚪 Retour à l\'accueil',
+        
+        # 欢迎页面
+        'welcome_title': 'NAVIGUEZ SUR VOTRE CAMPUS',
+        'welcome_subtitle': 'Trouvez des salles de classe, des laboratoires et des ressources en 3D',
+        'explore_3d': 'EXPLORER LA CARTE 3D',
+        
+        # 主页面
+        'campus_navigation': '🏫 Système de navigation du campus SCIS',
+        'data_loaded': '✅ Données du campus chargées avec succès !',
+        'navigation_result': '📊 Résultat de la navigation :',
+        'path_details': '🛤️ Détails du chemin',
+        'total_distance': 'Distance totale : {:.2f} unités',
+        'no_path': 'Aucun chemin disponible entre les deux salles de classe',
+        'navigation_error': 'Erreur de navigation : {}',
+        'loading_error': 'Échec du chargement du fichier de données !',
+        'building_not_found': 'Sélection de bâtiment invalide, seuls les bâtiments A, B, C et la porte sont pris en charge',
+        
+        # 方向指示
+        'up': 'monter',
+        'down': 'descendre',
+        'forward': 'tout droit',
+        'backward': 'reculer',
+        'right': 'à droite',
+        'left': 'à gauche',
+        'cross_corridor': 'Couloir de liaison du bâtiment {} au bâtiment {} ({})',
+        
+        # 节点类型
+        'stair': 'Escalier',
+        'elevator': 'Ascenseur',
+        'classroom': 'Salle de classe',
+        'corridor': 'Couloir',
     }
 }
 
 # 支持的语言列表
-SUPPORTED_LANGUAGES = ['en', 'zh']
+SUPPORTED_LANGUAGES = ['en', 'zh', 'fr']
 
 # 语言名称映射
 LANGUAGE_NAMES = {
     'en': 'English',
-    'zh': '中文'
+    'zh': '中文',
+    'fr': 'Français'
 }
 
 def get_text(key, lang='en'):
