@@ -87,6 +87,11 @@
           {
             "name": "corridor2",
             "points": [[22, 50, 2],[22, 45, 2],[22, 40, 2],[22, 35, 2],[22, 30, 2],[22, 25, 2],[22, 20, 2]]
+          },
+          <!-- 新增：A楼二楼连接C楼的走廊 -->
+          {
+            "name": "connectToBuildingC",
+            "points": [[40, 55, 2],[45, 55, 2],[50, 55, 2],[53, 55, 2]]
           }
         ],
         "stairs": [{"name": "Stairs1", "coordinates": [35, 20, 2]}]
@@ -189,6 +194,8 @@
       {"from": ["Stairs1", "level4"], "to": ["Stairs1", "level5"]},
       {"from": ["mainCorridor", "level3"], "to": ["connectToBuildingC", "level3"]},
       {"from": ["mainCorridor", "level1"], "to": ["connectToBuildingC", "level1"]},
+      <!-- 新增：A楼二楼走廊连接至C楼 -->
+      {"from": ["corridor2", "level2"], "to": ["connectToBuildingC", "level2"]},
       {"from": ["connectToBuildingB", "level1"], "to": ["connectToBuildingAAndC", "level1"]},
       {"from": ["ENTRANCE", "level1"], "to": ["mainCorridor", "level1"]}
     ]
@@ -440,6 +447,11 @@
           {
             "name": "corridor3",
             "points": [[68, 60, 2],[68, 55, 2],[68, 50, 2],[68, 45, 2],[68, 40, 2],[68, 35, 2],[68, 30, 2]]
+          },
+          <!-- 新增：C楼二楼连接A楼的走廊 -->
+          {
+            "name": "connectToBuildingA",
+            "points": [[53, 55, 2],[58, 55, 2],[63, 55, 2],[65, 55, 2]]
           }
         ],
         "stairs": [
@@ -508,12 +520,12 @@
       {"from": ["Stairs5", "lowerLevel"], "to": ["Stairs5", "level1"]},
       {"from": ["Stairs5", "level1"], "to": ["Stairs5", "level2"]},
       {"from": ["Stairs5", "level2"], "to": ["Stairs5", "level3"]},
-      {"from": ["connectToBuildingA", "level1"], "to": ["mainCorridor", "level1"]},
+      {"from": ["connectToBuildingA", "level1"], "to": ["corridor3", "level1"]},
       {"from": ["connectToBuildingA", "level3"], "to": ["mainCorridor", "level3"]},
+      <!-- 新增：C楼二楼连接至A楼 -->
+      {"from": ["connectToBuildingA", "level2"], "to": ["corridor1", "level2"]},
       {"from": ["connectToBuildingB", "level1"], "to": ["connectToBuildingAAndC", "level1"]},
-    
       {"from": ["SCHOOL CLINIC", "level1"], "to": ["corridor3", "level1"]},
-      
       {"from": ["gateToC", "level1"], "to": ["SCHOOL CLINIC", "level1"]}
     ]
   },
@@ -546,7 +558,6 @@
             "name": "gateToC",
             "type": "external",
             "style": {"color": "gray","lineType": "dashed"},
-           
             "points": [[-30, -30, -3],[66, 26, -3]]
           }
         ],
@@ -556,7 +567,6 @@
     "connections": [
       {"from": ["gateToA", "level1"], "to": ["ENTRANCE", "level1"]},
       {"from": ["gateToB", "level1"], "to": ["connectToBuildingAAndC", "level1"]},
-     
       {"from": ["gateToC", "level1"], "to": ["SCHOOL CLINIC", "level1"]}
     ]
   }
