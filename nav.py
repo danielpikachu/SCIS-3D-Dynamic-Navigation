@@ -724,7 +724,7 @@ def build_navigation_graph(school_data):
                 dist = euclidean_distance(c1, c2, floor_penalty=15.0)
                 graph.add_edge(n1, n2, dist)
 
-        # 楼宇之间跨楼走廊连通逻辑（原有不动）
+        # ========== 楼宇之间跨楼走廊连通逻辑（优化版：自动连接走廊末端） ==========
         for connection in building_data['connections']:
             from_obj_name, from_level = connection['from']
             to_obj_name, to_level = connection['to']
@@ -740,7 +740,27 @@ def build_navigation_graph(school_data):
             else:
                 from_obj_type = 'corridor'
             
-            from_node_name = f"{from_obj_name}-p0" if from_obj_type == 'corridor' else from_obj_name
+            # ========== 修改点1：自动找走廊的末端节点 ==========
+            if from_obj_type == 'corridor':
+                # 获取该走廊在当前楼层的所有节点
+                from_corr_nodes = []
+                for nid, info in graph.nodes.items():
+                    if (info['building'] == building_name and 
+                        info['type'] == 'corridor' and 
+                        info['level'] == from_level and 
+                        from_obj_name in info['name']):
+                        from_corr_nodes.append(nid)
+                
+                if from_corr_nodes:
+                    # 按坐标排序，取最后一个（末端）
+                    from_corr_nodes.sort(key=lambda nid: (graph.nodes[nid]['coordinates'][0], graph.nodes[nid]['coordinates'][1]))
+                    from_node_name = from_corr_nodes[-1].split('-')[-1]
+                    from_node_name = f"{from_obj_name}-{from_node_name}"
+                else:
+                    from_node_name = f"{from_obj_name}-p0"
+            else:
+                from_node_name = from_obj_name
+            
             from_node_id = graph.node_id_map.get((building_id, from_obj_type, from_node_name, from_level))
 
             to_building_id = building_id
@@ -767,7 +787,27 @@ def build_navigation_graph(school_data):
             else:
                 to_obj_type = 'corridor'
             
-            to_node_name = f"{to_obj_name}-p0" if to_obj_type == 'corridor' else to_obj_name
+            # ========== 修改点2：自动找目标走廊的起点 ==========
+            if to_obj_type == 'corridor':
+                target_building_name = to_building_id.replace('building', '') if to_building_id != 'gate' else 'Gate'
+                to_corr_nodes = []
+                for nid, info in graph.nodes.items():
+                    if (info['building'] == target_building_name and
+                        info['type'] == 'corridor' and
+                        info['level'] == to_level and
+                        to_obj_name in info['name']):
+                        to_corr_nodes.append(nid)
+                
+                if to_corr_nodes:
+                    # 按坐标排序，取第一个（起点）
+                    to_corr_nodes.sort(key=lambda nid: (graph.nodes[nid]['coordinates'][0], graph.nodes[nid]['coordinates'][1]))
+                    to_node_name = to_corr_nodes[0].split('-')[-1]
+                    to_node_name = f"{to_obj_name}-{to_node_name}"
+                else:
+                    to_node_name = f"{to_obj_name}-p0"
+            else:
+                to_node_name = to_obj_name
+            
             to_node_id = graph.node_id_map.get((to_building_id, to_obj_type, to_node_name, to_level))
 
             if from_node_id and to_node_id:
@@ -779,7 +819,7 @@ def build_navigation_graph(school_data):
                     distance = euclidean_distance(from_coords, to_coords, floor_penalty=15.0)
                 graph.add_edge(from_node_id, to_node_id, distance)
 
-        # AB、BC、AC楼宇互通
+        # AB、BC、AC楼宇互通（原有代码原样保留）
         a_building_id = 'buildingA'
         b_building_id = 'buildingB'
         c_building_id = 'buildingC'
@@ -808,7 +848,6 @@ def build_navigation_graph(school_data):
             distance = euclidean_distance(coords_b, coords_c, floor_penalty=0)
             graph.add_edge(b_c_node_id, c_b_node_id, distance)
         
-        # AC楼宇互通 level1
         connect_level1 = 'level1'
         a_corr1_name = 'connectToBuildingC-p3'
         a_connect1_node_id = graph.node_id_map.get((a_building_id, 'corridor', a_corr1_name, connect_level1))
@@ -821,7 +860,6 @@ def build_navigation_graph(school_data):
             distance = euclidean_distance(coords_a, coords_c, floor_penalty=0)
             graph.add_edge(a_connect1_node_id, c_connect1_node_id, distance)
         
-        # AC楼宇互通 level3
         connect_level3 = 'level3'
         a_corr3_name = 'connectToBuildingC-p2'
         a_connect3_node_id = graph.node_id_map.get((a_building_id, 'corridor', a_corr3_name, connect_level3))
