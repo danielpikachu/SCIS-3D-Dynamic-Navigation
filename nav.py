@@ -779,7 +779,7 @@ def build_navigation_graph(school_data):
                     distance = euclidean_distance(from_coords, to_coords, floor_penalty=15.0)
                 graph.add_edge(from_node_id, to_node_id, distance)
 
-        # AB、BC、AC楼宇互通（原有代码原样保留）
+        # AB、BC、AC楼宇互通
         a_building_id = 'buildingA'
         b_building_id = 'buildingB'
         c_building_id = 'buildingC'
@@ -808,6 +808,7 @@ def build_navigation_graph(school_data):
             distance = euclidean_distance(coords_b, coords_c, floor_penalty=0)
             graph.add_edge(b_c_node_id, c_b_node_id, distance)
         
+        # AC楼宇互通 level1
         connect_level1 = 'level1'
         a_corr1_name = 'connectToBuildingC-p3'
         a_connect1_node_id = graph.node_id_map.get((a_building_id, 'corridor', a_corr1_name, connect_level1))
@@ -820,6 +821,7 @@ def build_navigation_graph(school_data):
             distance = euclidean_distance(coords_a, coords_c, floor_penalty=0)
             graph.add_edge(a_connect1_node_id, c_connect1_node_id, distance)
         
+        # AC楼宇互通 level3
         connect_level3 = 'level3'
         a_corr3_name = 'connectToBuildingC-p2'
         a_connect3_node_id = graph.node_id_map.get((a_building_id, 'corridor', a_corr3_name, connect_level3))
@@ -831,6 +833,19 @@ def build_navigation_graph(school_data):
             coords_c = graph.nodes[c_connect3_node_id]['coordinates']
             distance = euclidean_distance(coords_a, coords_c, floor_penalty=0)
             graph.add_edge(a_connect3_node_id, c_connect3_node_id, distance)
+
+        # ========== 新增：AC楼宇 level2 互通 ==========
+        connect_level2 = 'level2'
+        a_corr2_name = 'connectToBuildingC-p3'   # A楼 level2 走廊末端
+        a_connect2_node_id = graph.node_id_map.get((a_building_id, 'corridor', a_corr2_name, connect_level2))
+        c_corr2_name = 'connectToBuildingA-p0'   # C楼 level2 走廊起点
+        c_connect2_node_id = graph.node_id_map.get((c_building_id, 'corridor', c_corr2_name, connect_level2))
+
+        if a_connect2_node_id and c_connect2_node_id:
+            coords_a = graph.nodes[a_connect2_node_id]['coordinates']
+            coords_c = graph.nodes[c_connect2_node_id]['coordinates']
+            distance = euclidean_distance(coords_a, coords_c, floor_penalty=0)
+            graph.add_edge(a_connect2_node_id, c_connect2_node_id, distance)
 
     return graph
 
