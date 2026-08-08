@@ -11,6 +11,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import base64
 import copy
+import requests  # 👈 新增：用于请求腾讯文档API
 
 # 导入多语言支持
 from lang_utils import init_language, get_lang, get_text, language_selector, get_direction_text, get_node_type_text
@@ -25,6 +26,58 @@ st.set_page_config(
 )
 
 plt.switch_backend('Agg')
+
+# ====================== 🆕 腾讯文档配置（读取拥堵数据） ======================
+TENCENT_DOC_CONFIG = {
+    "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJjbHQiOiI5YWVmZGM2ODdkNWU0MGYwODdjODNmZDZmOWZkYTc0YyIsInR5cCI6MSwiZXhwIjoxNzg4NjIwNDA4LjE1NjQ0MzgsImlhdCI6MTc4NjAyODQwOC4xNTY0NDM4LCJzdWIiOiI4MDA4ZDU5MmU3YzE0YTJiYjA5YzQ4ODdiZWRiYjQ3YiJ9.H3r5qKYHsXOBlqjtgrhBbiQDzv5iel7TdZ-wNcbyIlQ",  # 👈 替换为你的 access_token
+    "open_id": "9aefdc687d5e40f087c83fd6f9fda74c",            # 👈 替换为你的 open_id
+    "doc_id": "DRU5PcVZMWkJyaWVE",           # 👈 替换为你的表格文件ID
+    "sheet_id": "BB08J2"            # 👈 替换为你的工作表ID (tab=后面的值)
+}
+
+def get_congestion_status_from_tencent():
+    """
+    从腾讯文档读取最新一行的拥堵状态
+    返回: {"status": 1 或 0, "distance": 距离值, "timestamp": 时间} 或 None
+    """
+    try:
+        # 读取表格前10行数据
+        url = f"https://docs.qq.com/sheets/v2/sheets/{TENCENT_DOC_CONFIG['doc_id']}/values/{TENCENT_DOC_CONFIG['sheet_id']}!A:C"
+        
+        headers = {
+            "Authorization": f"Bearer {TENCENT_DOC_CONFIG['access_token']}",
+            "X-Open-Id": TENCENT_DOC_CONFIG['open_id']
+        }
+        
+        resp = requests.get(url, headers=headers, timeout=10)
+        
+        if resp.status_code == 200:
+            data = resp.json()
+            values = data.get("values", [])
+            
+            if len(values) <= 1:
+                # 只有表头，没有数据
+                return None
+            
+            # 获取最后一行数据（跳过表头）
+            last_row = values[-1]
+            
+            # 假设格式: [时间, 距离, 状态]
+            if len(last_row) >= 3:
+                return {
+                    "timestamp": last_row[0] if last_row[0] else "",
+                    "distance": float(last_row[1]) if last_row[1] else 0,
+                    "status": int(last_row[2]) if last_row[2] else 0
+                }
+            else:
+                return None
+        else:
+            st.warning(f"⚠️ 读取腾讯文档失败: {resp.status_code}")
+            return None
+            
+    except Exception as e:
+        st.warning(f"⚠️ 读取腾讯文档异常: {str(e)}")
+        return None
 
 # --------------------------
 # Google Sheets Configuration
@@ -135,7 +188,6 @@ COLORS = {
     'end_label': 'purple',
     'connect_corridor': 'gold',
     'building_label': {'A': 'darkblue', 'B': 'darkgreen', 'C': 'darkred', 'Gate': 'darkgoldenrod'},
-    # 电梯配色新增
     'elevator': {
         'ElevatorB1': '#00BFFF'
     },
@@ -724,7 +776,7 @@ def build_navigation_graph(school_data):
                 dist = euclidean_distance(c1, c2, floor_penalty=15.0)
                 graph.add_edge(n1, n2, dist)
 
-        # ========== 楼宇之间跨楼走廊连通逻辑（优化版：自动连接走廊末端） ==========
+        # ========== 楼宇之间跨楼走廊连通逻辑 ==========
         for connection in building_data['connections']:
             from_obj_name, from_level = connection['from']
             to_obj_name, to_level = connection['to']
@@ -740,9 +792,7 @@ def build_navigation_graph(school_data):
             else:
                 from_obj_type = 'corridor'
             
-            # ========== 修改点1：自动找走廊的末端节点 ==========
             if from_obj_type == 'corridor':
-                # 获取该走廊在当前楼层的所有节点
                 from_corr_nodes = []
                 for nid, info in graph.nodes.items():
                     if (info['building'] == building_name and 
@@ -752,7 +802,6 @@ def build_navigation_graph(school_data):
                         from_corr_nodes.append(nid)
                 
                 if from_corr_nodes:
-                    # 按坐标排序，取最后一个（末端）
                     from_corr_nodes.sort(key=lambda nid: (graph.nodes[nid]['coordinates'][0], graph.nodes[nid]['coordinates'][1]))
                     from_node_name = from_corr_nodes[-1].split('-')[-1]
                     from_node_name = f"{from_obj_name}-{from_node_name}"
@@ -787,7 +836,6 @@ def build_navigation_graph(school_data):
             else:
                 to_obj_type = 'corridor'
             
-            # ========== 修改点2：自动找目标走廊的起点 ==========
             if to_obj_type == 'corridor':
                 target_building_name = to_building_id.replace('building', '') if to_building_id != 'gate' else 'Gate'
                 to_corr_nodes = []
@@ -799,7 +847,6 @@ def build_navigation_graph(school_data):
                         to_corr_nodes.append(nid)
                 
                 if to_corr_nodes:
-                    # 按坐标排序，取第一个（起点）
                     to_corr_nodes.sort(key=lambda nid: (graph.nodes[nid]['coordinates'][0], graph.nodes[nid]['coordinates'][1]))
                     to_node_name = to_corr_nodes[0].split('-')[-1]
                     to_node_name = f"{to_obj_name}-{to_node_name}"
@@ -874,9 +921,9 @@ def build_navigation_graph(school_data):
 
         # ========== 新增：AC楼宇 level2 互通 ==========
         connect_level2 = 'level2'
-        a_corr2_name = 'connectToBuildingC-p3'   # A楼 level2 走廊末端
+        a_corr2_name = 'connectToBuildingC-p3'
         a_connect2_node_id = graph.node_id_map.get((a_building_id, 'corridor', a_corr2_name, connect_level2))
-        c_corr2_name = 'connectToBuildingA-p0'   # C楼 level2 走廊起点
+        c_corr2_name = 'connectToBuildingA-p0'
         c_connect2_node_id = graph.node_id_map.get((c_building_id, 'corridor', c_corr2_name, connect_level2))
 
         if a_connect2_node_id and c_connect2_node_id:
@@ -916,7 +963,7 @@ def construct_path(previous_nodes, end_node):
         current_node = previous_nodes[current_node]
     return path if len(path) > 1 else None
 
-# ====================== 导航核心函数：模式切换 ======================
+# ====================== 🆕 导航核心函数（修改版）：根据拥堵状态禁用2楼连廊 ======================
 def navigate(graph, start_building, start_classroom, start_level, end_building, end_classroom, end_level):
     valid_buildings = ['A', 'B', 'C', 'Gate']
     if start_building not in valid_buildings or end_building not in valid_buildings:
@@ -939,19 +986,42 @@ def navigate(graph, start_building, start_classroom, start_level, end_building, 
         if end_node not in graph.nodes:
             return None, f"Destination classroom does not exist: {end_building}{end_classroom}@{end_level}", None, None
 
-        # ===== 根据用户选择切换模式 =====
+        # ===== 🆕 读取腾讯文档拥堵状态 =====
+        congestion_data = get_congestion_status_from_tencent()
+        is_congested = False
+        if congestion_data:
+            is_congested = (congestion_data.get("status") == 1)
+            st.session_state['congestion_status'] = congestion_data
+        else:
+            st.session_state['congestion_status'] = None
+
+        # ===== 🆕 根据拥堵状态决定是否禁用2楼连廊 =====
         temp_graph = copy.deepcopy(graph)
         
-        if st.session_state.get("is_disabled", False):
-            # YES模式：只禁用B楼的楼梯，保留电梯
+        if is_congested:
+            # 🔴 拥堵状态：禁用2楼连廊（AC楼之间 level2 的通道）
+            st.info("🚧 检测到拥堵，2楼连廊已禁用，将自动规划绕行路径")
+            
+            # 找到所有 level2 的跨楼连廊节点并断开
             for nid, node_data in temp_graph.nodes.items():
-                if node_data['type'] == 'stair' and node_data['building'] == 'B':
-                    node_data['neighbors'] = {}
+                # 检查是否是走廊节点
+                if node_data['type'] == 'corridor':
+                    # 检查是否包含跨楼连廊的关键词
+                    node_name = node_data['name']
+                    # 如果是 level2 的 AC 连廊节点，断开邻居
+                    if node_data['level'] == 'level2':
+                        if 'connectToBuildingC' in node_name or 'connectToBuildingA' in node_name:
+                            # 清空邻居，断开连接
+                            node_data['neighbors'] = {}
+                            # 同时修改对应的另一个楼节点
+                            for other_nid, other_data in temp_graph.nodes.items():
+                                if other_data['type'] == 'corridor' and other_data['level'] == 'level2':
+                                    if ('connectToBuildingC' in other_data['name'] or 'connectToBuildingA' in other_data['name']):
+                                        if nid != other_nid:
+                                            other_data['neighbors'] = {}
         else:
-            # NO模式：禁用所有电梯，只使用楼梯
-            for nid, node_data in temp_graph.nodes.items():
-                if node_data['type'] == 'elevator':
-                    node_data['neighbors'] = {}
+            # 🟢 畅通状态：正常使用所有路径
+            st.session_state['is_disabled'] = False
 
         distances, previous_nodes = dijkstra(temp_graph, start_node)
         path = construct_path(previous_nodes, end_node)
@@ -1081,6 +1151,8 @@ def reset_app_state():
         del st.session_state['path_result']
     # 重置无障碍选项
     st.session_state['is_disabled'] = False
+    # 🆕 重置拥堵状态
+    st.session_state['congestion_status'] = None
 
 # --------------------------
 # Page Logic
@@ -1106,6 +1178,8 @@ def main():
         st.session_state['current_path'] = None
     if 'is_disabled' not in st.session_state:
         st.session_state['is_disabled'] = False
+    if 'congestion_status' not in st.session_state:
+        st.session_state['congestion_status'] = None
 
     # 欢迎页面
     if st.session_state['page'] == 'welcome':
@@ -1183,6 +1257,23 @@ def main():
         with st.sidebar:
             # 语言选择器
             language_selector()
+            st.divider()
+            
+            # 🆕 实时路况显示
+            st.subheader("🚦 实时路况")
+            congestion_data = get_congestion_status_from_tencent()
+            if congestion_data:
+                status_text = "🔴 拥堵" if congestion_data.get("status") == 1 else "🟢 畅通"
+                st.metric(
+                    label="B楼入口",
+                    value=status_text,
+                    delta=f"距离 {congestion_data.get('distance', 0)} cm"
+                )
+                st.caption(f"更新时间: {congestion_data.get('timestamp', '未知')}")
+                if congestion_data.get("status") == 1:
+                    st.warning("⚠️ 2楼连廊已自动禁用")
+            else:
+                st.info("📡 等待传感器数据...")
             st.divider()
             
             # 无障碍设置区域
