@@ -11,16 +11,10 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import base64
 import copy
-import requests
-import re
 
 # 导入多语言支持
 from lang_utils import init_language, get_lang, get_text, language_selector, get_direction_text, get_node_type_text
 from languages import LANGUAGES
-
-# 导入配置读取模块
-from config_reader import ConfigReader
-TENCENT_DOC_URL = "https://docs.qq.com/sheet/DRU5PcVZMWkJyaWVE?tab=BB08J2"
 
 # ====================== 移动端适配核心：页面配置 ======================
 st.set_page_config(
@@ -31,11 +25,6 @@ st.set_page_config(
 )
 
 plt.switch_backend('Agg')
-
-# --------------------------
-# 腾讯文档Excel配置（超声波传感器数据）
-# --------------------------
-TENCENT_DOC_URL = "https://docs.qq.com/sheet/DRU5PcVZMWkJyaWVE?tab=BB08J2"
 
 # --------------------------
 # Google Sheets Configuration
@@ -119,7 +108,7 @@ def get_total_accesses(worksheet):
         return 0
 
 # --------------------------
-# Color Scheme
+# Color Scheme（新增电梯配色）
 # --------------------------
 COLORS = {
     'building': {'A': 'lightblue', 'B': 'lightgreen', 'C': 'lightcoral', 'Gate': 'gold'},
@@ -146,12 +135,12 @@ COLORS = {
     'end_label': 'purple',
     'connect_corridor': 'gold',
     'building_label': {'A': 'darkblue', 'B': 'darkgreen', 'C': 'darkred', 'Gate': 'darkgoldenrod'},
+    # 电梯配色新增
     'elevator': {
         'ElevatorB1': '#00BFFF'
     },
     'elevator_label': 'darkblue',
-    'path_elevator': 'deepskyblue',
-    'disabled_corridor': 'red'  # 被禁用的连廊颜色
+    'path_elevator': 'deepskyblue'
 }
 
 def load_school_data_detailed(filename):
@@ -163,7 +152,7 @@ def load_school_data_detailed(filename):
         return None
 
 # ====================== 3D Plot Function ======================
-def plot_3d_map_plotly(school_data, graph=None, display_options=None, corridor_config=None):
+def plot_3d_map_plotly(school_data, graph=None, display_options=None):
     fig = go.Figure()
 
     if display_options is None:
@@ -176,12 +165,6 @@ def plot_3d_map_plotly(school_data, graph=None, display_options=None, corridor_c
             'start_building': None,
             'end_building': None
         }
-    
-    if corridor_config is None:
-        corridor_config = {'level2_disabled': False}
-    
-    # 获取2楼连廊是否禁用
-    is_level2_disabled = corridor_config.get('level2_disabled', False)
     
     show_all = display_options['show_all']
     start_level = display_options['start_level']
@@ -268,22 +251,9 @@ def plot_3d_map_plotly(school_data, graph=None, display_options=None, corridor_c
                     is_external = corridor.get('type') == 'external'
                     is_connect = 'connectToBuilding' in corridor.get('name','') or 'gateTo' in corridor.get('name','')
                     
-                    # 检查是否是A-C 2楼连廊（被禁用的）
-                    corr_name = corridor.get('name', '')
-                    is_disabled = False
-                    if is_connect and is_level2_disabled:
-                        if 'connectToBuildingC' in corr_name and building_name == 'A' and level_name == 'level2':
-                            is_disabled = True
-                        elif 'connectToBuildingA' in corr_name and building_name == 'C' and level_name == 'level2':
-                            is_disabled = True
-                    
                     if is_external:
                         corr_line_color = 'gray'
                         corr_line_width = 5
-                        dash = 'dash'
-                    elif is_connect and is_disabled:
-                        corr_line_color = COLORS['disabled_corridor']
-                        corr_line_width = 7
                         dash = 'dash'
                     elif is_connect:
                         corr_line_color = COLORS['connect_corridor']
@@ -355,7 +325,7 @@ def plot_3d_map_plotly(school_data, graph=None, display_options=None, corridor_c
                         showlegend=show_legend
                     ))
 
-            # 绘制电梯
+            # ========== 绘制电梯 ==========
             if 'elevators' in level:
                 for elevator in level['elevators']:
                     elev_name = elevator['name']
@@ -427,6 +397,7 @@ def plot_3d_map_plotly(school_data, graph=None, display_options=None, corridor_c
         except Exception:
             pass
 
+    # ====================== 手机端自动关闭图例，电脑端显示图例 ======================
     is_mobile = False
     try:
         ua = st.context.headers.get("User-Agent", "").lower()
@@ -447,8 +418,8 @@ def plot_3d_map_plotly(school_data, graph=None, display_options=None, corridor_c
 
     return fig
 
-def plot_3d_map(school_data, graph=None, display_options=None, corridor_config=None):
-    fig = plot_3d_map_plotly(school_data, graph, display_options, corridor_config)
+def plot_3d_map(school_data, graph=None, display_options=None):
+    fig = plot_3d_map_plotly(school_data, graph, display_options)
     return fig, None
 
 # --------------------------
@@ -492,14 +463,6 @@ class Graph:
             self.nodes[node1_id]['neighbors'][node2_id] = weight
             self.nodes[node2_id]['neighbors'][node1_id] = weight
 
-    def remove_edge(self, node1_id, node2_id):
-        """移除两个节点之间的边"""
-        if node1_id in self.nodes and node2_id in self.nodes:
-            if node2_id in self.nodes[node1_id]['neighbors']:
-                del self.nodes[node1_id]['neighbors'][node2_id]
-            if node1_id in self.nodes[node2_id]['neighbors']:
-                del self.nodes[node2_id]['neighbors'][node1_id]
-
 def euclidean_distance(coords1, coords2, floor_penalty=15.0):
     base_dist = np.sqrt(sum((a - b)**2 for a, b in zip(coords1, coords2)))
     z1, z2 = coords1[2], coords2[2]
@@ -508,7 +471,7 @@ def euclidean_distance(coords1, coords2, floor_penalty=15.0):
     total_dist = base_dist + penalty
     return total_dist
 
-# ====================== 方向函数 ======================
+# ====================== 方向函数：电梯上下识别 ======================
 def get_direction_between_nodes(graph, current_node_id, next_node_id):
     current_node = graph.nodes[current_node_id]
     next_node = graph.nodes[next_node_id]
@@ -521,6 +484,7 @@ def get_direction_between_nodes(graph, current_node_id, next_node_id):
     curr_is_elev = current_node['type'] == 'elevator'
     next_is_elev = next_node['type'] == 'elevator'
 
+    # 电梯上下楼层提示
     if (curr_is_elev and next_is_elev) or (curr_is_stair and next_is_stair):
         if next_z > curr_z:
             return get_direction_text('up')
@@ -617,6 +581,7 @@ def build_navigation_graph(school_data):
         for level in building_data['levels']:
             level_name = level['name']
             
+            # 获取当前楼层所有走廊节点
             corr_nodes = [
                 node_id for node_id, node_info in graph.nodes.items()
                 if node_info['building'] == building_name 
@@ -696,7 +661,7 @@ def build_navigation_graph(school_data):
                 if nearest_corr_node_id:
                     graph.add_edge(stair_node_id, nearest_corr_node_id, min_dist)
 
-            # 电梯绑定最近走廊
+            # ========== 电梯绑定最近走廊 ==========
             elevator_nodes = [
                 node_id for node_id, node_info in graph.nodes.items()
                 if node_info['building'] == building_name
@@ -759,7 +724,7 @@ def build_navigation_graph(school_data):
                 dist = euclidean_distance(c1, c2, floor_penalty=15.0)
                 graph.add_edge(n1, n2, dist)
 
-        # ========== 楼宇之间跨楼走廊连通逻辑 ==========
+        # ========== 楼宇之间跨楼走廊连通逻辑（优化版：自动连接走廊末端） ==========
         for connection in building_data['connections']:
             from_obj_name, from_level = connection['from']
             to_obj_name, to_level = connection['to']
@@ -775,7 +740,9 @@ def build_navigation_graph(school_data):
             else:
                 from_obj_type = 'corridor'
             
+            # ========== 修改点1：自动找走廊的末端节点 ==========
             if from_obj_type == 'corridor':
+                # 获取该走廊在当前楼层的所有节点
                 from_corr_nodes = []
                 for nid, info in graph.nodes.items():
                     if (info['building'] == building_name and 
@@ -785,6 +752,7 @@ def build_navigation_graph(school_data):
                         from_corr_nodes.append(nid)
                 
                 if from_corr_nodes:
+                    # 按坐标排序，取最后一个（末端）
                     from_corr_nodes.sort(key=lambda nid: (graph.nodes[nid]['coordinates'][0], graph.nodes[nid]['coordinates'][1]))
                     from_node_name = from_corr_nodes[-1].split('-')[-1]
                     from_node_name = f"{from_obj_name}-{from_node_name}"
@@ -819,6 +787,7 @@ def build_navigation_graph(school_data):
             else:
                 to_obj_type = 'corridor'
             
+            # ========== 修改点2：自动找目标走廊的起点 ==========
             if to_obj_type == 'corridor':
                 target_building_name = to_building_id.replace('building', '') if to_building_id != 'gate' else 'Gate'
                 to_corr_nodes = []
@@ -830,6 +799,7 @@ def build_navigation_graph(school_data):
                         to_corr_nodes.append(nid)
                 
                 if to_corr_nodes:
+                    # 按坐标排序，取第一个（起点）
                     to_corr_nodes.sort(key=lambda nid: (graph.nodes[nid]['coordinates'][0], graph.nodes[nid]['coordinates'][1]))
                     to_node_name = to_corr_nodes[0].split('-')[-1]
                     to_node_name = f"{to_obj_name}-{to_node_name}"
@@ -849,7 +819,7 @@ def build_navigation_graph(school_data):
                     distance = euclidean_distance(from_coords, to_coords, floor_penalty=15.0)
                 graph.add_edge(from_node_id, to_node_id, distance)
 
-        # AB、BC、AC楼宇互通
+        # AB、BC、AC楼宇互通（原有代码原样保留）
         a_building_id = 'buildingA'
         b_building_id = 'buildingB'
         c_building_id = 'buildingC'
@@ -902,11 +872,11 @@ def build_navigation_graph(school_data):
             distance = euclidean_distance(coords_a, coords_c, floor_penalty=0)
             graph.add_edge(a_connect3_node_id, c_connect3_node_id, distance)
 
-        # AC楼宇 level2 互通
+        # ========== 新增：AC楼宇 level2 互通 ==========
         connect_level2 = 'level2'
-        a_corr2_name = 'connectToBuildingC-p3'
+        a_corr2_name = 'connectToBuildingC-p3'   # A楼 level2 走廊末端
         a_connect2_node_id = graph.node_id_map.get((a_building_id, 'corridor', a_corr2_name, connect_level2))
-        c_corr2_name = 'connectToBuildingA-p0'
+        c_corr2_name = 'connectToBuildingA-p0'   # C楼 level2 走廊起点
         c_connect2_node_id = graph.node_id_map.get((c_building_id, 'corridor', c_corr2_name, connect_level2))
 
         if a_connect2_node_id and c_connect2_node_id:
@@ -915,20 +885,6 @@ def build_navigation_graph(school_data):
             distance = euclidean_distance(coords_a, coords_c, floor_penalty=0)
             graph.add_edge(a_connect2_node_id, c_connect2_node_id, distance)
 
-    return graph
-
-def apply_corridor_config(graph, corridor_config):
-    """根据配置禁用连廊（只禁用A-C 2楼连廊）"""
-    if corridor_config is None:
-        return graph
-    
-    if corridor_config.get('level2_disabled', False):
-        # A-C level2 连廊
-        a_node = graph.node_id_map.get(('buildingA', 'corridor', 'connectToBuildingC-p3', 'level2'))
-        c_node = graph.node_id_map.get(('buildingC', 'corridor', 'connectToBuildingA-p0', 'level2'))
-        if a_node and c_node:
-            graph.remove_edge(a_node, c_node)
-    
     return graph
 
 def dijkstra(graph, start_node):
@@ -960,8 +916,8 @@ def construct_path(previous_nodes, end_node):
         current_node = previous_nodes[current_node]
     return path if len(path) > 1 else None
 
-# ====================== 导航核心函数 ======================
-def navigate(graph, start_building, start_classroom, start_level, end_building, end_classroom, end_level, corridor_config=None):
+# ====================== 导航核心函数：模式切换 ======================
+def navigate(graph, start_building, start_classroom, start_level, end_building, end_classroom, end_level):
     valid_buildings = ['A', 'B', 'C', 'Gate']
     if start_building not in valid_buildings or end_building not in valid_buildings:
         return None, get_text('building_not_found'), None, None
@@ -983,16 +939,16 @@ def navigate(graph, start_building, start_classroom, start_level, end_building, 
         if end_node not in graph.nodes:
             return None, f"Destination classroom does not exist: {end_building}{end_classroom}@{end_level}", None, None
 
-        # 应用连廊配置
+        # ===== 根据用户选择切换模式 =====
         temp_graph = copy.deepcopy(graph)
-        temp_graph = apply_corridor_config(temp_graph, corridor_config)
         
-        # 无障碍模式
         if st.session_state.get("is_disabled", False):
+            # YES模式：只禁用B楼的楼梯，保留电梯
             for nid, node_data in temp_graph.nodes.items():
                 if node_data['type'] == 'stair' and node_data['building'] == 'B':
                     node_data['neighbors'] = {}
         else:
+            # NO模式：禁用所有电梯，只使用楼梯
             for nid, node_data in temp_graph.nodes.items():
                 if node_data['type'] == 'elevator':
                     node_data['neighbors'] = {}
@@ -1015,6 +971,7 @@ def navigate(graph, start_building, start_classroom, start_level, end_building, 
                 node_building = node_info['building']
                 
                 node_desc = ""
+                # 楼梯、电梯都存入高亮集合
                 if node_type == 'stair':
                     path_stairs.add((node_building, node_name, node_level))
                     node_desc = f"Building {node_building} {node_name} ({node_level})"
@@ -1122,29 +1079,13 @@ def reset_app_state():
     st.session_state['current_path'] = None
     if 'path_result' in st.session_state:
         del st.session_state['path_result']
+    # 重置无障碍选项
     st.session_state['is_disabled'] = False
 
 # --------------------------
 # Page Logic
 # --------------------------
 def main():
-    # ===== 临时调试代码：检查 Secrets 内容 =====
-    st.write("### 🔍 Secrets 调试信息")
-    st.write("所有 Secrets 的 Key:", list(st.secrets.keys()))
-    
-    if "tencent_doc" in st.secrets:
-        st.success("✅ 找到 'tencent_doc' 配置节！")
-        # 安全地显示部分内容，避免泄露完整 token
-        td = st.secrets["tencent_doc"]
-        st.write(f"  - client_id: {td.get('client_id', '未设置')}")
-        st.write(f"  - open_id: {td.get('open_id', '未设置')}")
-        st.write(f"  - access_token 长度: {len(td.get('access_token', ''))} 字符")
-    else:
-        st.error("❌ 未找到 'tencent_doc' 配置节！")
-    
-    st.write("--- 调试信息结束 ---")
-    # ===== 调试代码结束 =====
-    
     # 初始化语言
     init_language()
     
@@ -1165,14 +1106,6 @@ def main():
         st.session_state['current_path'] = None
     if 'is_disabled' not in st.session_state:
         st.session_state['is_disabled'] = False
-    
-    # 初始化配置读取器
-    if 'config_reader' not in st.session_state:
-        st.session_state['config_reader'] = ConfigReader(TENCENT_DOC_URL)
-    
-    # 获取连廊配置
-    config_reader = st.session_state['config_reader']
-    corridor_config = config_reader.get_corridor_status()
 
     # 欢迎页面
     if st.session_state['page'] == 'welcome':
@@ -1248,38 +1181,11 @@ def main():
     # 主导航界面
     else:
         with st.sidebar:
+            # 语言选择器
             language_selector()
             st.divider()
             
-            # 显示传感器状态
-            st.subheader("🚶 人流监测")
-            
-            # 显示传感器数据
-            col1, col2 = st.columns(2)
-            with col1:
-                st.metric(
-                    label="检测时间",
-                    value=corridor_config['timestamp'].split(' ')[1] if ' ' in corridor_config['timestamp'] else corridor_config['timestamp']
-                )
-            with col2:
-                st.metric(
-                    label="距离 (cm)",
-                    value=f"{corridor_config['distance']:.1f}"
-                )
-            
-            # 显示连廊状态
-            if corridor_config['level2_disabled']:
-                st.warning("🚫 人流量大，2楼连廊已关闭")
-            else:
-                st.success("✅ 人流量正常，2楼连廊开放")
-            
-            # 刷新按钮
-            if st.button("🔄 刷新传感器数据", use_container_width=True):
-                st.session_state['config_reader']._cache = None
-                st.rerun()
-            
-            st.divider()
-            
+            # 无障碍设置区域
             st.subheader(get_text('accessibility_setting'))
             access_choice = st.radio(
                 get_text('barrier_free_access'),
@@ -1287,6 +1193,7 @@ def main():
                 index=0,
                 help=get_text('select_no')
             )
+            # 更新session state
             st.session_state['is_disabled'] = (access_choice == "Yes")
             st.divider()
 
@@ -1341,8 +1248,7 @@ def main():
             try:
                 path, message, simplified_path, new_display_options = navigate(
                     graph, start_building, start_classroom, start_level,
-                    end_building, end_classroom, end_level,
-                    corridor_config
+                    end_building, end_classroom, end_level
                 )
                 if path and new_display_options:
                     st.success(f"{get_text('navigation_result')} {message}")
@@ -1356,7 +1262,7 @@ def main():
                 st.error(get_text('navigation_error').format(str(e)))
 
         # 渲染3D地图
-        fig, _ = plot_3d_map(school_data, graph, display_options, corridor_config)
+        fig, _ = plot_3d_map(school_data, graph, display_options)
         st.plotly_chart(fig, use_container_width=True)
 
 if __name__ == "__main__":
