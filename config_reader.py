@@ -92,7 +92,7 @@ class ConfigReader:
     def _fetch_via_api(self, client_id, access_token, open_id):
         """使用腾讯文档Open API读取数据"""
         try:
-            url = "https://docs.qq.com/openapi/v2/sheet/get_values"
+            url = f"https://docs.qq.com/openapi/v2/sheet/{self.doc_id}/values/BB08J2"
             
             headers = {
                 'Access-Token': access_token,
