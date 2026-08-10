@@ -1128,6 +1128,23 @@ def reset_app_state():
 # Page Logic
 # --------------------------
 def main():
+    # ===== 临时调试代码：检查 Secrets 内容 =====
+    st.write("### 🔍 Secrets 调试信息")
+    st.write("所有 Secrets 的 Key:", list(st.secrets.keys()))
+    
+    if "tencent_doc" in st.secrets:
+        st.success("✅ 找到 'tencent_doc' 配置节！")
+        # 安全地显示部分内容，避免泄露完整 token
+        td = st.secrets["tencent_doc"]
+        st.write(f"  - client_id: {td.get('client_id', '未设置')}")
+        st.write(f"  - open_id: {td.get('open_id', '未设置')}")
+        st.write(f"  - access_token 长度: {len(td.get('access_token', ''))} 字符")
+    else:
+        st.error("❌ 未找到 'tencent_doc' 配置节！")
+    
+    st.write("--- 调试信息结束 ---")
+    # ===== 调试代码结束 =====
+    
     # 初始化语言
     init_language()
     
