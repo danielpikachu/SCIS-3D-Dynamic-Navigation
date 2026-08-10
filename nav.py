@@ -20,6 +20,7 @@ from languages import LANGUAGES
 
 # 导入配置读取模块
 from config_reader import ConfigReader
+TENCENT_DOC_URL = "https://docs.qq.com/sheet/DRU5PcVZMWkJyaWVE?tab=BB08J2"
 
 # ====================== 移动端适配核心：页面配置 ======================
 st.set_page_config(
@@ -1150,7 +1151,7 @@ def main():
     
     # 初始化配置读取器
     if 'config_reader' not in st.session_state:
-        st.session_state['config_reader'] = ConfigReader(TENCENT_DOC_URL, cache_duration=10)
+        st.session_state['config_reader'] = ConfigReader(TENCENT_DOC_URL)
     
     # 获取连廊配置
     config_reader = st.session_state['config_reader']
