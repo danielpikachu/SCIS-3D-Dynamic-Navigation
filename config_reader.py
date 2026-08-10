@@ -5,8 +5,6 @@
 import requests
 import streamlit as st
 from datetime import datetime
-import hashlib
-import time
 
 class ConfigReader:
     """腾讯文档Open API配置读取器"""
@@ -25,11 +23,13 @@ class ConfigReader:
         
         # 从secrets获取API凭证
         try:
-            self.app_id = st.secrets["tencent_doc"]["app_id"]
-            self.app_key = st.secrets["tencent_doc"]["app_key"]
+            self.client_id = st.secrets["tencent_doc"]["client_id"]
+            self.access_token = st.secrets["tencent_doc"]["access_token"]
+            self.open_id = st.secrets["tencent_doc"]["open_id"]
         except:
-            self.app_id = None
-            self.app_key = None
+            self.client_id = None
+            self.access_token = None
+            self.open_id = None
             st.warning("未配置腾讯文档API凭证")
     
     def get_corridor_status(self):
@@ -39,10 +39,10 @@ class ConfigReader:
                 return self._cache
         
         try:
-            if self.app_id and self.app_key and self.doc_id:
+            if self.client_id and self.access_token and self.doc_id:
                 data = self._fetch_via_api()
             else:
-                data = self._fetch_via_public()
+                data = None
             
             if data:
                 result = {
@@ -58,7 +58,7 @@ class ConfigReader:
                     'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                     'distance': 0
                 }
-                st.warning("⚠️ 无法读取数据，使用默认配置")
+                st.warning("⚠️ 无法读取数据，使用默认配置（连廊开放）")
             
             self._cache = result
             self._cache_time = datetime.now()
@@ -77,33 +77,31 @@ class ConfigReader:
         """使用腾讯文档Open API读取数据"""
         try:
             # 腾讯文档API - 读取表格内容
-            url = f"https://docs.qq.com/openapi/v1/sheets/{self.doc_id}/values"
-            
-            # 生成签名
-            timestamp = str(int(time.time()))
-            nonce = hashlib.md5(str(time.time()).encode()).hexdigest()[:8]
-            sign_str = f"{self.app_id}{self.app_key}{timestamp}{nonce}"
-            signature = hashlib.md5(sign_str.encode()).hexdigest()
+            # API文档: https://docs.qq.com/open/document/app/openapi/v2/sheet/get_values.html
+            url = f"https://docs.qq.com/openapi/v2/sheet/get_values"
             
             headers = {
-                'X-App-Id': self.app_id,
-                'X-Timestamp': timestamp,
-                'X-Nonce': nonce,
-                'X-Signature': signature,
+                'Access-Token': self.access_token,
+                'Client-Id': self.client_id,
+                'Open-Id': self.open_id,
                 'Content-Type': 'application/json'
             }
             
             params = {
-                'range': 'A:C',  # 读取A到C列
-                'majorDimension': 'ROWS'
+                'doc_id': self.doc_id,
+                'sheet_id': 'BB08J2',  # 你的sheet ID（从URL的tab参数获取）
+                'range': 'A:C'  # 读取A到C列
             }
             
             response = requests.get(url, headers=headers, params=params, timeout=10)
             
             if response.status_code == 200:
                 data = response.json()
+                # 根据API返回格式解析数据
+                # 不同API版本返回格式可能略有不同
                 values = data.get('values', [])
                 if len(values) >= 2:
+                    # 最后一行数据
                     last_row = values[-1]
                     if len(last_row) >= 3:
                         return {
@@ -111,38 +109,9 @@ class ConfigReader:
                             'distance': float(last_row[1]) if last_row[1] else 0,
                             'status': int(last_row[2]) if last_row[2] else 0
                         }
+            else:
+                st.warning(f"API请求失败: {response.status_code} - {response.text[:200]}")
             return None
         except Exception as e:
             st.warning(f"API读取失败: {str(e)}")
-            return None
-    
-    def _fetch_via_public(self):
-        """备用方案：尝试公开导出"""
-        try:
-            urls = [
-                f"https://docs.qq.com/sheet/{self.doc_id}/export?format=csv",
-                f"https://docs.qq.com/sheet/{self.doc_id}?format=csv",
-            ]
-            
-            import re
-            for url in urls:
-                try:
-                    response = requests.get(url, timeout=10)
-                    if response.status_code == 200:
-                        content = response.text
-                        lines = [line.strip() for line in content.split('\n') if line.strip()]
-                        if len(lines) >= 2:
-                            last_line = lines[-1]
-                            parts = re.split(r'[,\t]+', last_line)
-                            parts = [p.strip() for p in parts if p.strip()]
-                            if len(parts) >= 3:
-                                return {
-                                    'time': parts[0],
-                                    'distance': float(parts[1]) if parts[1] else 0,
-                                    'status': int(parts[2]) if parts[2] else 0
-                                }
-                except:
-                    continue
-            return None
-        except:
             return None
