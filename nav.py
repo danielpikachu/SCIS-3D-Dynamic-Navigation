@@ -1,4 +1,5 @@
 import json
+from config_reader import get_latest_people_flow
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import numpy as np
@@ -923,6 +924,7 @@ def navigate(graph, start_building, start_classroom, start_level, end_building, 
         return None, get_text('building_not_found'), None, None
         
     try:
+        corridor_blocked = False
         start_key = (start_building, start_classroom, start_level)
         end_key = (end_building, end_classroom, end_level)
         
@@ -952,6 +954,27 @@ def navigate(graph, start_building, start_classroom, start_level, end_building, 
             for nid, node_data in temp_graph.nodes.items():
                 if node_data['type'] == 'elevator':
                     node_data['neighbors'] = {}
+
+        # ===== 新增逻辑：人流量检测（完全独立，不影响无障碍） =====
+        # 从 Supabase 读取最新人流量状态
+        latest_flow = get_latest_people_flow()
+        corridor_blocked = False
+        
+        if latest_flow == 1:
+            # 封锁 A-C 二楼连廊节点
+            corridor_nodes_to_block = []
+            for nid, node_data in temp_graph.nodes.items():
+                if node_data['type'] == 'corridor' and node_data['level'] == 'level2':
+                    # 判断是否是 A-C 连廊节点（根据JSON中的名称）
+                    if node_data['name'] in ['connectToBuildingC', 'connectToBuildingA']:
+                        corridor_nodes_to_block.append(nid)
+            
+            # 切断这些节点的所有连接（封锁路径）
+            for nid in corridor_nodes_to_block:
+                temp_graph.nodes[nid]['neighbors'] = {}
+            
+            if corridor_nodes_to_block:
+                corridor_blocked = True
 
         distances, previous_nodes = dijkstra(temp_graph, start_node)
         path = construct_path(previous_nodes, end_node)
@@ -1013,6 +1036,8 @@ def navigate(graph, start_building, start_classroom, start_level, end_building, 
                     prev_building = node_building
             
             full_path_str = " → ".join(simplified_path)
+            if corridor_blocked:
+                full_path_str = "🚧 [A-C二楼连廊已封锁，已自动绕行] " + full_path_str
             display_options = {
                 'start_level': start_level,
                 'end_level': end_level,
