@@ -7,8 +7,9 @@ from supabase import create_client
 def init_supabase():
     """初始化 Supabase 客户端"""
     try:
-        url = st.secrets["SUPABASE_URL"]
-        key = st.secrets["SUPABASE_KEY"]
+        supabase_config = st.secrets["supabase"]  
+        url = supabase_config["url"]              
+        key = supabase_config["key"]             
         return create_client(url, key)
     except Exception as e:
         st.warning(f"⚠️ Supabase 连接失败: {e}")
