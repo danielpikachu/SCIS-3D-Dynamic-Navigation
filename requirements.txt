@@ -4,6 +4,7 @@ numpy>=1.21.0
 gspread  
 oauth2client
 plotly
+supabase
 
 
 
