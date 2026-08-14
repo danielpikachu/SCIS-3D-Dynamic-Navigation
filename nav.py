@@ -962,7 +962,7 @@ def navigate(graph, start_building, start_classroom, start_level, end_building, 
         
         # 从 Supabase 读取最新人流量状态
         latest_flow = get_latest_people_flow()
-        st.write(f"🔍 调试：latest_flow = {latest_flow}")
+       
         
         if latest_flow == 1:
             # 封锁 A-C 二楼连廊节点
