@@ -5,57 +5,83 @@ from supabase import create_client
 
 @st.cache_resource
 def init_supabase():
-    """初始化 Supabase 客户端"""
+    """初始化 Supabase 客户端（带详细错误信息）"""
     try:
-        # 检查密钥是否存在
+        # 第一步：检查 st.secrets 中是否有 'supabase' 区块
         if "supabase" not in st.secrets:
-            st.error("❌ st.secrets 中没有 'supabase' 区块")
+            st.error("❌ 错误1：st.secrets 中没有 'supabase' 区块")
             return None
         
         supabase_config = st.secrets["supabase"]
-        st.write(f"🔍 读取到 supabase 配置: url = {supabase_config.get('url', '未找到')}")
+        
+        # 第二步：检查 'url' 和 'key' 是否存在
+        if "url" not in supabase_config:
+            st.error("❌ 错误2：'supabase' 区块中没有 'url' 字段")
+            return None
+        if "key" not in supabase_config:
+            st.error("❌ 错误3：'supabase' 区块中没有 'key' 字段")
+            return None
         
         url = supabase_config["url"]
         key = supabase_config["key"]
-        return create_client(url, key)
+        
+        st.success(f"✅ 成功读取配置: url = {url}")
+        
+        # 第三步：尝试连接 Supabase
+        try:
+            client = create_client(url, key)
+            st.success("✅ Supabase 客户端创建成功")
+            return client
+        except Exception as e:
+            st.error(f"❌ 错误4：创建 Supabase 客户端失败: {e}")
+            return None
+            
     except Exception as e:
-        st.error(f"❌ Supabase 连接失败: {e}")
+        st.error(f"❌ 错误5：初始化过程出现未知错误: {e}")
         return None
 
 
 def get_latest_people_flow():
-    """
-    获取最新一条记录的人流量标记
+    """获取最新一条记录的人流量标记（带详细错误信息）"""
     
-    Returns:
-        int: 0 或 1（如果表里有数据）
-        None: 如果没数据或读取失败
-    """
+    # 第一步：初始化客户端
     supabase = init_supabase()
     if supabase is None:
-        st.warning("⚠️ Supabase 客户端初始化失败")
+        st.error("❌ 错误6：Supabase 客户端初始化失败，无法继续查询")
         return None
     
     try:
-        # 先打印表名，确认是否正确
-        st.write("🔍 正在查询表: people_flow")
+        # 第二步：打印要查询的表名
+        st.write("🔍 正在查询表: `people_flow`")
         
+        # 第三步：执行查询
         response = supabase.table("people_flow")\
             .select("people_flow")\
             .order("created_at", desc=True)\
             .limit(1)\
             .execute()
         
-        # 打印查询结果
-        st.write(f"🔍 查询返回数据: {response.data}")
+        # 第四步：检查查询结果
+        st.write(f"🔍 查询返回的原始数据: {response.data}")
         
-        if response.data and len(response.data) > 0:
-            result = response.data[0].get('people_flow')
-            st.write(f"🔍 获取到的 people_flow 值: {result}")
-            return result
-        else:
-            st.warning("⚠️ 表中没有数据或查询结果为空")
+        if response.data is None:
+            st.warning("⚠️ 查询返回的数据为 None")
             return None
+        
+        if len(response.data) == 0:
+            st.warning("⚠️ 表中没有数据，请先在 Supabase 中插入一条记录")
+            return None
+        
+        # 第五步：提取 people_flow 值
+        result = response.data[0].get('people_flow')
+        st.write(f"🔍 提取到的 people_flow 值: {result} (类型: {type(result)})")
+        
+        if result is None:
+            st.warning("⚠️ 记录中没有 'people_flow' 字段，请检查列名是否正确")
+            return None
+        
+        return result
+        
     except Exception as e:
-        st.error(f"❌ 查询失败: {e}")
+        st.error(f"❌ 错误7：查询执行失败: {e}")
         return None
