@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import numpy as np
 import streamlit as st
-from supabase import create_client   
+
 import gspread
 from google.oauth2.service_account import Credentials
 from datetime import datetime
@@ -958,19 +958,7 @@ def navigate(graph, start_building, start_classroom, start_level, end_building, 
                     node_data['neighbors'] = {}
 
         # ===== 新增逻辑：人流量检测（完全独立，不影响无障碍） =====             
-        # ===== 直接测试 Supabase 连接 =====
-        try:
-            supabase_url = st.secrets["supabase"]["url"]
-            supabase_key = st.secrets["supabase"]["key"]
-            st.write(f"🔍 直接测试 - URL: {supabase_url}")
-            st.write(f"🔍 直接测试 - KEY 长度: {len(supabase_key)}")
-            
-            test_client = create_client(supabase_url, supabase_key)
-            test_response = test_client.table("people_flow").select("people_flow").order("created_at", desc=True).limit(1).execute()
-            st.write(f"🔍 直接测试 - 查询结果: {test_response.data}")
-        except Exception as e:
-            st.error(f"🔍 直接测试 - 失败: {e}")
-        # ===== 测试代码结束 =====
+        
         
         # 从 Supabase 读取最新人流量状态
         latest_flow = get_latest_people_flow()
