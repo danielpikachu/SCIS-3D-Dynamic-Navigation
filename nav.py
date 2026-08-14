@@ -1,3 +1,8 @@
+# 调试代码（验证后请删除）
+st.write("SUPABASE_URL exists:", "SUPABASE_URL" in st.secrets)
+st.write("SUPABASE_KEY exists:", "SUPABASE_KEY" in st.secrets)
+
+
 import json
 from config_reader import get_latest_people_flow
 import matplotlib.pyplot as plt
