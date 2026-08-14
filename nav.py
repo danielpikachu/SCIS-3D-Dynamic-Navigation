@@ -968,7 +968,7 @@ def navigate(graph, start_building, start_classroom, start_level, end_building, 
             for nid, node_data in temp_graph.nodes.items():
                 if node_data['type'] == 'corridor' and node_data['level'] == 'level2':
                     # 判断是否是 A-C 连廊节点（根据JSON中的名称）
-                    if node_data['name'] in ['connectToBuildingC', 'connectToBuildingA']:
+                    if 'connectToBuildingC' in node_data['name'] or 'connectToBuildingA' in node_data['name']:
                         corridor_nodes_to_block.append(nid)
             
             # 切断这些节点的所有连接（封锁路径）
