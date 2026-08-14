@@ -1,7 +1,3 @@
-# 调试代码（验证后请删除）
-st.write("SUPABASE_URL exists:", "SUPABASE_URL" in st.secrets)
-st.write("SUPABASE_KEY exists:", "SUPABASE_KEY" in st.secrets)
-
 
 import json
 from config_reader import get_latest_people_flow
@@ -9,6 +5,11 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import numpy as np
 import streamlit as st
+
+# 调试代码（验证后请删除）
+st.write("SUPABASE_URL exists:", "SUPABASE_URL" in st.secrets)
+st.write("SUPABASE_KEY exists:", "SUPABASE_KEY" in st.secrets)
+
 import gspread
 from google.oauth2.service_account import Credentials
 from datetime import datetime
