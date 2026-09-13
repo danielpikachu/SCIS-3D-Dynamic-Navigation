@@ -965,7 +965,7 @@ def navigate(graph, start_building, start_classroom, start_level, end_building, 
             # Block A-C level 2 corridor nodes
             corridor_nodes_to_block = []
             for nid, node_data in temp_graph.nodes.items():
-                if node_data['type'] == 'corridor' and node_data['level'] == 'level2':
+                if node_data['type'] == 'corridor' and node_data['level'] == 'level3':
                     # Check if it's an A-C corridor node (based on JSON name)
                     if 'connectToBuildingC' in node_data['name'] or 'connectToBuildingA' in node_data['name']:
                         corridor_nodes_to_block.append(nid)
