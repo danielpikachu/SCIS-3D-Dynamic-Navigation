@@ -962,7 +962,7 @@ def navigate(graph, start_building, start_classroom, start_level, end_building, 
         latest_flow = get_latest_people_flow()
        
         if latest_flow == 1:
-            # Block A-C level 2 corridor nodes
+            # Block A-C level 3 corridor nodes
             corridor_nodes_to_block = []
             for nid, node_data in temp_graph.nodes.items():
                 if node_data['type'] == 'corridor' and node_data['level'] == 'level3':
@@ -1038,7 +1038,7 @@ def navigate(graph, start_building, start_classroom, start_level, end_building, 
             
             full_path_str = " → ".join(simplified_path)
             if corridor_blocked:
-                full_path_str = "🚧 [A-C Level 2 corridor blocked, rerouted] " + full_path_str
+                full_path_str = "🚧 [A-C Level 3 corridor blocked, rerouted] " + full_path_str
             display_options = {
                 'start_level': start_level,
                 'end_level': end_level,
