@@ -756,7 +756,8 @@ def build_navigation_graph(school_data):
                 if from_corr_nodes:
                     # Sort by coordinates, take the last one (endpoint)
                     from_corr_nodes.sort(key=lambda nid: (graph.nodes[nid]['coordinates'][0], graph.nodes[nid]['coordinates'][1]))
-                    from_node_name = from_corr_nodes[-1].split('-')[-1]
+                    # FIX: strip the '@level' suffix from the parsed point name
+                    from_node_name = from_corr_nodes[-1].split('-')[-1].split('@')[0]
                     from_node_name = f"{from_obj_name}-{from_node_name}"
                 else:
                     from_node_name = f"{from_obj_name}-p0"
@@ -766,6 +767,10 @@ def build_navigation_graph(school_data):
             from_node_id = graph.node_id_map.get((building_id, from_obj_type, from_node_name, from_level))
 
             to_building_id = building_id
+            # ===== FIX START: correct mapping for cross-building corridors =====
+            # connectToBuildingB / connectToBuildingC live in Building A
+            # connectToBuildingA lives in Building C
+            # connectToBuildingAAndC lives in Building B
             target_building_map = {
                 'ENTRANCE': 'buildingA',
                 'connectToBuildingAAndC': 'buildingB',
@@ -774,12 +779,12 @@ def build_navigation_graph(school_data):
                 'connectToBuildingA': 'buildingC',
                 'SCHOOL CLINIC': 'buildingC',
             }
-           
+            # Match longest key first to avoid 'connectToBuildingA' stealing 'connectToBuildingAAndC'
             for keyword in sorted(target_building_map.keys(), key=len, reverse=True):
                 if to_obj_name == keyword or to_obj_name.startswith(keyword + '-'):
                     to_building_id = target_building_map[keyword]
                     break
-
+            # ===== FIX END =====
             
             if to_obj_name.startswith(('Stairs', 'GateStairs')):
                 to_obj_type = 'stair'
@@ -806,7 +811,8 @@ def build_navigation_graph(school_data):
                 if to_corr_nodes:
                     # Sort by coordinates, take the first one (start)
                     to_corr_nodes.sort(key=lambda nid: (graph.nodes[nid]['coordinates'][0], graph.nodes[nid]['coordinates'][1]))
-                    to_node_name = to_corr_nodes[0].split('-')[-1]
+                    # FIX: strip the '@level' suffix from the parsed point name
+                    to_node_name = to_corr_nodes[0].split('-')[-1].split('@')[0]
                     to_node_name = f"{to_obj_name}-{to_node_name}"
                 else:
                     to_node_name = f"{to_obj_name}-p0"
