@@ -769,14 +769,17 @@ def build_navigation_graph(school_data):
             target_building_map = {
                 'ENTRANCE': 'buildingA',
                 'connectToBuildingAAndC': 'buildingB',
+                'connectToBuildingB': 'buildingA',
+                'connectToBuildingC': 'buildingA',
+                'connectToBuildingA': 'buildingC',
                 'SCHOOL CLINIC': 'buildingC',
-                'connectToBuildingB': 'buildingB',
-                'connectToBuildingC': 'buildingC'
             }
-            for keyword, target_building in target_building_map.items():
-                if keyword in to_obj_name:
-                    to_building_id = target_building
+           
+            for keyword in sorted(target_building_map.keys(), key=len, reverse=True):
+                if to_obj_name == keyword or to_obj_name.startswith(keyword + '-'):
+                    to_building_id = target_building_map[keyword]
                     break
+
             
             if to_obj_name.startswith(('Stairs', 'GateStairs')):
                 to_obj_type = 'stair'
