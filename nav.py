@@ -380,7 +380,7 @@ def plot_3d_map_plotly(school_data, graph=None, display_options=None):
             fig.add_trace(go.Scatter3d(
                 x=xs, y=ys, z=zs,
                 mode='lines+markers',
-                line=dict(color=COLORS['path'], width=5),
+                line=dict(color=COLORS['path'], width=10),
                 marker=dict(color=COLORS['path'], size=4),
                 name="Path"
             ))
